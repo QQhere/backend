@@ -136,29 +136,17 @@ const search = async (req, res) => {
           [Op.between]: [priceStart, priceEnd],
         },
         region: {
-          [Op.like]: `%${region}%`, // Matches partial strings for region
+          [Op.like]: `%${region}%`,
         },
       },
       include: [
         {
           model: Departure,
-          required: false,
-          where: {
-            [Op.or]: [
-              {
-                time: {
-                  [Op.between]: [timeStart, timeEnd],
-                },
-              },
-              {
-                time: null,
-              },
-            ],
-          },
         },
       ],
     });
-    const dataMap = tours.map(item=> {
+
+    const dataMap = tours.map(item => {
       return {
         id: item.id,
         url: item.url,
@@ -170,8 +158,21 @@ const search = async (req, res) => {
         duration: item.duration,
         notDeparture: item.notDeparture,
         departures: item.departures.map(departure => departure.time)
+      };
+    }).filter(item => {
+      if (typeof item.notDeparture === 'string' && (item.notDeparture.toLowerCase().includes("liên hệ") || item.notDeparture.toLowerCase().includes("hằng ngày"))) {
+        return true;
       }
-    })
+      if (Array.isArray(item.departures)) {
+        const check = item.departures.find(departure => {
+          return new Date(departure) >= new Date(timeStart) && new Date(departure) <= new Date(timeEnd) ?1:0;
+        });
+        if (check) {
+          return true;
+        }
+      }
+      return false;
+    });
 
     return res.status(200).json(dataMap);
   } catch (error) {
@@ -179,8 +180,6 @@ const search = async (req, res) => {
     return res.status(500).json({ message: 'An error occurred during the search.' });
   }
 };
-
-
 
 module.exports = {
   addDataVn,

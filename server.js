@@ -18,8 +18,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const {addDataVn} = require('./src/controllers/tourController');
-addDataVn()
+const tourRouter = require('./src/routers/tourRouter');
+
+app.use('/api/tour', tourRouter);
 
 // Start server
 app.listen(PORT, () => {

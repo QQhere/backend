@@ -33,9 +33,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false
     },
-    departure: {
+    notDeparture: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true,
+      defaultValue: null
     },
     createdAt: {
       type: DataTypes.DATE,

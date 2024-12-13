@@ -38,7 +38,10 @@ db.sequelize.sync({ alter: true })
 
 db.tour = require('./tour.js')(sequelize, DataTypes);
 
+db.departure = require('./departure.js')(sequelize, DataTypes);
 
+db.tour.hasMany(db.departure, { foreignKey: 'tour_id', onUpdate: 'cascade', onDelete: 'cascade' });
+db.departure.belongsTo(db.tour, { foreignKey: 'tour_id', onUpdate: 'cascade', onDelete: 'cascade' });
 
 
 module.exports = db;

@@ -130,6 +130,9 @@ const addDataVn = async (req, res) => {
 
 const search = async (req, res) => {
     const { priceStart, priceEnd, timeStart, timeEnd, region } = req.query;
+    if (!priceEnd || !timeStart || !timeEnd || !region) {
+        return res.status(500).json({ message: "Missing fields" });
+    }
 
     const result = await searchService(priceStart, priceEnd, timeStart, timeEnd, region); 
     if (result) {
@@ -138,8 +141,6 @@ const search = async (req, res) => {
       return res.status(500).json({ message: "Error in search" });
     }
 };
-
-
 
 module.exports = {
   addDataVn,

@@ -173,7 +173,6 @@ const rankingService = async (distances) => {
     }
 }
 
-
 const topsisService = async (priceStart, priceEnd, timeStart, timeEnd, region) => {
     // Bước 1: Chuẩn hóa dữ liệu
     const normalizedData = await dataNormalService(priceStart, priceEnd, timeStart, timeEnd, region);

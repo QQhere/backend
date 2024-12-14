@@ -22,7 +22,7 @@ const weighteData = async (req, res) => {
         return res.status(500).json({ message: "Missing fields" });
     }
 
-    const result = await calculations.weightedData(normalizeData);
+    const result = await calculations.weighteDataService(normalizeData);
 
     if (result) {
         return res.status(200).json(result);
@@ -37,7 +37,7 @@ const solution = async (req, res) => {
         return res.status(500).json({ message: "Missing fields" });
     }
 
-    const result = await calculations.solution(weightedNormalizedData);
+    const result = await calculations.solutionService(weightedNormalizedData);
 
     if (result) {
         return res.status(200).json(result);
@@ -52,7 +52,7 @@ const distance = async (req, res) => {
         return res.status(500).json({ message: "Missing fields" });
     }
 
-    const result = await calculations.distance(weightedNormalizedData, idealSolution, negativeIdealSolution);
+    const result = await calculations.distanceService(weightedNormalizedData, idealSolution, negativeIdealSolution);
 
     if (result) {
         return res.status(200).json(result);
@@ -67,7 +67,7 @@ const ranking = async (req, res) => {
         return res.status(500).json({ message: "Missing fields" });
     }
 
-    const result = await calculations.ranking(distances);
+    const result = await calculations.rankingService(distances);
 
     if (result) {
         return res.status(200).json(result);

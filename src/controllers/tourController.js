@@ -6,6 +6,7 @@ const Departure = db.departure;
 
 const dataVn = require('../../tour_details_vn.json');
 const dataUs = require('../../tour_details_qte.json');
+const { searchService } = require('../service/tourService');
 
 const regex = /^[\d,\/\s\-\(\)\[\]\{\}\.\&\#\+\*\=\!@\$%\^&\*_\|<>:;'"`~]+$/;
 
@@ -128,57 +129,17 @@ const addDataVn = async (req, res) => {
 }
 
 const search = async (req, res) => {
-  try {
     const { priceStart, priceEnd, timeStart, timeEnd, region } = req.query;
-    const tours = await Tour.findAll({
-      where: {
-        price: {
-          [Op.between]: [priceStart, priceEnd],
-        },
-        region: {
-          [Op.like]: `%${region}%`,
-        },
-      },
-      include: [
-        {
-          model: Departure,
-        },
-      ],
-    });
+    if (!priceEnd || !timeStart || !timeEnd || !region) {
+        return res.status(500).json({ message: "Missing fields" });
+    }
 
-    const dataMap = tours.map(item => {
-      return {
-        id: item.id,
-        url: item.url,
-        name: item.name,
-        price: item.price,
-        ratingValue: item.ratingValue,
-        ratingCount: item.ratingCount,
-        region: item.region,
-        duration: item.duration,
-        notDeparture: item.notDeparture,
-        departures: item.departures.map(departure => departure.time)
-      };
-    }).filter(item => {
-      if (typeof item.notDeparture === 'string' && (item.notDeparture.toLowerCase().includes("liên hệ") || item.notDeparture.toLowerCase().includes("hằng ngày"))) {
-        return true;
-      }
-      if (Array.isArray(item.departures)) {
-        const check = item.departures.find(departure => {
-          return new Date(departure) >= new Date(timeStart) && new Date(departure) <= new Date(timeEnd) ?1:0;
-        });
-        if (check) {
-          return true;
-        }
-      }
-      return false;
-    });
-
-    return res.status(200).json(dataMap);
-  } catch (error) {
-    console.error('Error in search:', error);
-    return res.status(500).json({ message: 'An error occurred during the search.' });
-  }
+    const result = await searchService(priceStart, priceEnd, timeStart, timeEnd, region); 
+    if (result) {
+      return res.status(200).json(result);
+    } else {
+      return res.status(500).json({ message: "Error in search" });
+    }
 };
 
 module.exports = {

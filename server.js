@@ -19,8 +19,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 const tourRouter = require('./src/routers/tourRouter');
+const calculationRouter = require('./src/routers/calculation');
 
 app.use('/api/tour', tourRouter);
+app.use('/api/calculation', calculationRouter);
+
 
 // Start server
 app.listen(PORT, () => {

@@ -10,6 +10,47 @@ const { searchService } = require('../service/tourService');
 
 const regex = /^[\d,\/\s\-\(\)\[\]\{\}\.\&\#\+\*\=\!@\$%\^&\*_\|<>:;'"`~]+$/;
 
+// const parseDeparture = (departure) => {
+//   try {
+//     const result = [];
+//     const yearDefault = 2024;
+//     const regexYear = /\b\d{4}\b/;
+//     let year = regexYear.test(departure) ? parseInt(departure.match(regexYear)[0]) : yearDefault;
+//
+//     departure = departure.replace(/&/g, ";").replace(/\s+/g, "").replace(/-/g, "-");
+//
+//     const groups = departure.split(";");
+//
+//     for (let group of groups) {
+//       if (group.includes("-")) {
+//         const [start, end] = group.split("-").map(date => {
+//           const [d, m] = date.split("/");
+//           if (!d || !m) return null;
+//           return new Date(`${year}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
+//         });
+//
+//         if (start && end) {
+//           let currentDate = start;
+//           while (currentDate <= end) {
+//             result.push(currentDate.toISOString().slice(0, 10));
+//             currentDate.setDate(currentDate.getDate() + 1);
+//           }
+//         }
+//       } else if (group.includes("/")) {
+//         const dates = group.split(",").map(day => {
+//           const [d, m] = day.split("/");
+//           if (!d || !m) return null;
+//           return new Date(`${year}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`).toISOString().slice(0, 10);
+//         });
+//         result.push(...dates.filter(Boolean));
+//       }
+//     }
+//     return result;
+//   } catch (err) {
+//     return false;
+//   }
+// }
+
 const parseDeparture = (departure) => {
   try {
     const result = [];
@@ -17,15 +58,23 @@ const parseDeparture = (departure) => {
     const regexYear = /\b\d{4}\b/;
     let year = regexYear.test(departure) ? parseInt(departure.match(regexYear)[0]) : yearDefault;
 
-    departure = departure.replace(/&/g, ";").replace(/\s+/g, "").replace(/-/g, "-");
+    // Chuẩn hóa chuỗi
+    departure = departure
+      .replace(/&/g, ";")
+      .replace(/\s+/g, "")
+      .replace(/-/g, "-");
 
     const groups = departure.split(";");
 
     for (let group of groups) {
+      let month = null; // Tháng mặc định là null cho nhóm dữ liệu
+
       if (group.includes("-")) {
+        // Xử lý nhóm dạng khoảng ngày (start - end)
         const [start, end] = group.split("-").map(date => {
           const [d, m] = date.split("/");
           if (!d || !m) return null;
+          month = m; // Cập nhật tháng nếu có
           return new Date(`${year}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
         });
 
@@ -37,19 +86,31 @@ const parseDeparture = (departure) => {
           }
         }
       } else if (group.includes("/")) {
+        // Xử lý nhóm có định dạng dd/mm
         const dates = group.split(",").map(day => {
           const [d, m] = day.split("/");
           if (!d || !m) return null;
+          month = m; // Cập nhật tháng nếu có
           return new Date(`${year}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`).toISOString().slice(0, 10);
         });
         result.push(...dates.filter(Boolean));
+      } else {
+        // Xử lý nhóm chỉ có ngày (dạng "20,10,11,12")
+        const days = group.split(",").map(day => {
+          if (!day) return null;
+          return new Date(`${year}-${month?.padStart(2, "0") || "01"}-${day.padStart(2, "0")}`).toISOString().slice(0, 10);
+        });
+        result.push(...days.filter(Boolean));
       }
     }
+
     return result;
   } catch (err) {
+    console.log("Error parsing departure:", err);
     return false;
   }
-}
+};
+
 
 const addDataVn = async (req, res) => {
   try {
@@ -74,50 +135,67 @@ const addDataVn = async (req, res) => {
     }).filter(item => item.departure !== false);
 
     const addData = await sequelize.transaction(async (transaction) => {
-      return await Promise.all(parsedData.map(async (item) => {
+      for (const [index, item] of parsedData.entries()) { // Thêm log
+        console.log(`Processing item ${index + 1} of ${parsedData.length}`);
         try {
-          let depart = null
-          if (typeof item.departure === 'string' && (item.departure.toLowerCase().includes("liên hệ") || item.departure.toLowerCase().includes("hằng ngày"))){
-            depart = item.departure
+          let depart = null;
+
+          if (
+            typeof item.departure === 'string' &&
+            (item.departure.toLowerCase().includes("liên hệ") ||
+              item.departure.toLowerCase().includes("hằng ngày"))
+          ) {
+            depart = item.departure;
           }
 
-          const tour = await Tour.create({
-            url: item.url,
-            name: item.name,
-            price: item.price,
-            ratingValue: item.ratingValue,
-            ratingCount: item.ratingCount,
-            region: item.region,
-            duration: item.duration,
-            notDeparture: depart,
-          }, { transaction });
+          const tour = await Tour.create(
+            {
+              url: item.url,
+              name: item.name,
+              price: item.price,
+              ratingValue: item.ratingValue,
+              ratingCount: item.ratingCount,
+              region: item.region,
+              duration: item.duration,
+              notDeparture: depart,
+            },
+            { transaction }
+          );
 
-          if (typeof item.departure === 'string' && (item.departure.toLowerCase().includes("liên hệ") || item.departure.toLowerCase().includes("hằng ngày"))) {
-            await Departure.create({
-              tour_id: tour.id,
-              time: null
-            }, { transaction });
+          if (
+            typeof item.departure === 'string' &&
+            (item.departure.toLowerCase().includes("liên hệ") ||
+              item.departure.toLowerCase().includes("hằng ngày"))
+          ) {
+            await Departure.create(
+              {
+                tour_id: tour.id,
+                time: null,
+              },
+              { transaction }
+            );
           } else if (Array.isArray(item.departure)) {
             for (const date of item.departure) {
               try {
-                await Departure.create({
-                  tour_id: tour.id,
-                  time: date
-                }, { transaction });
+                await Departure.create(
+                  {
+                    tour_id: tour.id,
+                    time: date,
+                  },
+                  { transaction }
+                );
               } catch (error) {
                 console.log("Error inserting departure date: ", error);
-                // Handle individual errors without affecting the overall transaction
               }
             }
           }
-
-          return tour;
         } catch (error) {
           console.log("Error creating tour: ", error);
-          throw error; // This will rollback the entire transaction
+          throw error;
         }
-      }));
+      }
     });
+
 
     return res.status(200).json({
       addData
